@@ -6,11 +6,11 @@ html,body,#app{
     font-weight: 400;
     -webkit-font-smoothing: antialiased;
     -webkit-tap-highlight-color: transparent;
-    /* background-color: black; */
+    background-color: black;
 }
 
 .el-header {
-    /* background-color: black; */
+    background-color: black;
     line-height: 80px;
     padding: 0;
     display: flex;
@@ -46,7 +46,7 @@ html,body,#app{
 }
 
 .el-card{
-    /* background-color: black; */
+    background-color: black;
     width: 1140px;
     height: 500px;
 }
