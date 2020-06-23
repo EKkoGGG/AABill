@@ -48,6 +48,7 @@ html,body,#app{
 .el-card{
     background-color: black;
     width: 1140px;
-    height: 500px;
+    height: 100%;
+    /* margin-top: 5px; */
 }
 

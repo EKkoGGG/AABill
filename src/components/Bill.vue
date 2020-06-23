@@ -28,6 +28,7 @@
       </el-row>
       <el-row>
         <el-button type="primary" @click="addDialogVisible = true">添加账单</el-button>
+        <el-button type="primary" @click="testData">test</el-button>
       </el-row>
 
       <el-table :data="addForms" border stripe>
@@ -39,9 +40,25 @@
             <el-tag v-for="item in scope.row.aaersName" :key="item">{{item}}</el-tag>
           </template>
         </el-table-column>
+        <el-table-column label="操作">
+          <template v-slot="scope">
+            <el-button
+              size="mini"
+              type="primary"
+              icon="el-icon-edit"
+              @click="editBillDialog(scope.row)"
+            >编辑</el-button>
+            <el-button
+              size="mini"
+              type="danger"
+              icon="el-icon-edit"
+              @click="delBill(scope.$index)"
+            >删除</el-button>
+          </template>
+        </el-table-column>
       </el-table>
 
-      <el-button class="clsBtn" type="primary" @click="clsDialogVisible = true">分账</el-button>
+      <el-button class="clsBtn" type="primary" @click="calAAerBill">分账</el-button>
     </el-card>
 
     <el-dialog title="添加账单" :visible.sync="addDialogVisible" width="30%" @close="addDialogClosed">
@@ -52,7 +69,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="支付金额" prop="paynum">
-          <el-input type='number' v-model.number="addForm.paynum"></el-input>
+          <el-input type="number" v-model.number="addForm.paynum"></el-input>
         </el-form-item>
         <el-form-item label="参与人" prop="aaersName">
           <el-checkbox-group v-model="addForm.aaersId">
@@ -71,6 +88,16 @@
         <el-button type="primary" @click="addAAerBill">确 定</el-button>
       </span>
     </el-dialog>
+
+    <el-dialog title="分账" :visible.sync="calDialogVisible" width="30%">
+      <el-row v-for="item in listLog" :key="item">
+        <span>{{item}}</span>
+      </el-row>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="calDialogVisible = false">取 消</el-button>
+        <el-button type="primary" @click="calDialogVisible = false">确 定</el-button>
+      </span>
+    </el-dialog>
   </div>
 </template>
 
@@ -82,6 +109,7 @@ export default {
       inputVisible: false,
       inputValue: "",
       addDialogVisible: false,
+      calDialogVisible: false,
       addForms: [],
       addForm: {
         payman: "",
@@ -92,10 +120,120 @@ export default {
       },
       addFormRules: {
         paynum: [{ required: true, message: "请输入支付金额", trigger: "blur" }]
-      }
+      },
+      listLog: []
     };
   },
   methods: {
+    testData() {
+      this.aaers = [
+        {
+          collect: -30,
+          expend: 90,
+          id: 3,
+          name: "C",
+          pay: 60,
+          recpay: 0
+        },
+        {
+          collect: 0,
+          expend: 90,
+          id: 2,
+          name: "B",
+          pay: 90,
+          recpay: 0
+        },
+        {
+          collect: 30,
+          expend: 90,
+          id: 1,
+          name: "A",
+          pay: 120,
+          recpay: 30
+        }
+      ];
+      this.addForms = [
+        {
+          aaersId: [1, 2, 3],
+          aaersName: ["A", "B", "C"],
+          payManId: 1,
+          payman: "A",
+          paynum: 120
+        },
+        {
+          aaersId: [1, 2, 3],
+          aaersName: ["A", "B", "C"],
+          payManId: 2,
+          payman: "B",
+          paynum: 90
+        },
+        {
+          aaersId: [1, 2, 3],
+          aaersName: ["A", "B", "C"],
+          payManId: 3,
+          payman: "C",
+          paynum: 60
+        }
+      ];
+    },
+    editBillDialog() {},
+    calBill(list) {
+      let minIndex = 0;
+
+      for (let item of list) {
+        if (item.collect > 0) {
+          break;
+        }
+        minIndex++;
+      }
+      let log;
+      for (let i = 0; i < list.length; i++) {
+        if (i + 1 === list.length) {
+          break;
+        }
+        if (i < minIndex) {
+          list[minIndex].recpay += -list[i].collect;
+          log = `${list[i].name} 给 ${list[minIndex].name} ${-list[i]
+            .collect}元`;
+          this.listLog.push(log);
+        } else {
+          list[i + 1].recpay += list[i].recpay - list[i].collect;
+          log = `${list[i].name} 给 ${list[i + 1].name} ${list[i].recpay -
+            list[i].collect}元`;
+          this.listLog.push(log);
+        }
+      }
+    },
+    sortObj(propertyName, cond) {
+      return function(object1, object2) {
+        var value1 = object1[propertyName];
+        var value2 = object2[propertyName];
+        if (cond == 1) {
+          //降序
+          if (value2 < value1) {
+            return -1;
+          } else if (value2 > value1) {
+            return 1;
+          } else {
+            return 0;
+          }
+        } else if (cond == 0) {
+          //升序
+          if (value2 < value1) {
+            return 1;
+          } else if (value2 > value1) {
+            return -1;
+          } else {
+            return 0;
+          }
+        }
+      };
+    },
+    calAAerBill() {
+      this.calDialogVisible = true;
+      this.aaers.sort(this.sortObj("collect", 0));
+      this.calBill(this.aaers);
+    },
     addDialogClosed() {
       // this.$refs.addFormRef.resetFields();
       // console.log(this.aaers);
@@ -107,7 +245,6 @@ export default {
       });
       this.aaers[billForm.payManId - 1].pay += billForm.paynum;
       this.calAAers();
-      console.log(this.aaers);
     },
     addAAerBill() {
       this.addForm.payman = this.aaers[this.addForm.payManId - 1].name;
@@ -132,7 +269,26 @@ export default {
     handleClose(id) {
       this.aaers.splice(this.aaers.indexOf(id), 1);
     },
-
+    delBill(index) {
+      this.$confirm("是否删除该账单条目?", "提示", {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning"
+      })
+        .then(() => {
+          this.addForms.splice(index, 1);
+          this.$message({
+            type: "success",
+            message: "删除成功!"
+          });
+        })
+        .catch(() => {
+          this.$message({
+            type: "info",
+            message: "已取消删除"
+          });
+        });
+    },
     showInput() {
       this.inputVisible = true;
       this.$nextTick(_ => {
@@ -159,7 +315,7 @@ export default {
         pay: 0,
         expend: 0,
         collect: 0,
-        recpay:0
+        recpay: 0
       };
       this.aaers.push(newAAer);
       // console.log(this.aaers);
@@ -167,7 +323,7 @@ export default {
     calAAers() {
       this.aaers.forEach(item => {
         item.collect = item.pay - item.expend;
-      })
+      });
     }
   }
 };
