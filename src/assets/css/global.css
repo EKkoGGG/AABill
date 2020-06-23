@@ -38,17 +38,16 @@ html,body,#app{
 }
 
 .el-main{
-    margin-top: 30px;
+    margin-top: 20px;
     display: flex;
     justify-content: center;
     width: 100%;
-    padding: 0;
+    /* padding: 0; */
 }
 
 .el-card{
     background-color: black;
     width: 1140px;
     height: 100%;
-    /* margin-top: 5px; */
 }
 

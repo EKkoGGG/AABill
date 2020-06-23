@@ -1,6 +1,6 @@
 <template>
   <div>
-    <el-card>
+    <el-card shadow="never">
       <el-row>
         <el-col :span="1.5">
           <span>参与者：</span>
@@ -48,12 +48,7 @@
               icon="el-icon-edit"
               @click="editBillDialog(scope.row)"
             >编辑</el-button>
-            <el-button
-              size="mini"
-              type="danger"
-              icon="el-icon-edit"
-              @click="delBill(scope.$index)"
-            >删除</el-button>
+            <el-button size="mini" type="danger" icon="el-icon-edit" @click="delBill(scope)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -90,7 +85,7 @@
     </el-dialog>
 
     <el-dialog title="分账" :visible.sync="calDialogVisible" width="30%">
-      <el-row v-for="item in listLog" :key="item">
+      <el-row v-for="(item,index) in listLog" :key="index">
         <span>{{item}}</span>
       </el-row>
       <span slot="footer" class="dialog-footer">
@@ -149,7 +144,7 @@ export default {
           id: 1,
           name: "A",
           pay: 120,
-          recpay: 30
+          recpay: 0
         }
       ];
       this.addForms = [
@@ -269,14 +264,26 @@ export default {
     handleClose(id) {
       this.aaers.splice(this.aaers.indexOf(id), 1);
     },
-    delBill(index) {
+    delBill(scope) {
       this.$confirm("是否删除该账单条目?", "提示", {
         confirmButtonText: "确定",
         cancelButtonText: "取消",
         type: "warning"
       })
         .then(() => {
-          this.addForms.splice(index, 1);
+          let index = this.aaers.findIndex(x => x.id === scope.row.payManId);
+          this.aaers[index].pay -= scope.row.paynum;
+          for(let item of scope.row.aaersId)
+          {
+            this.aaers[this.aaers.findIndex(x => x.id === item)].expend -= scope.row.paynum / scope.row.aaersId.length
+          }
+          this.calAAers()
+          this.listLog = [];
+          // this.aaers.sort(this.sortObj("collect", 0));
+          // this.calBill(this.aaers);
+          // console.log(this.listLog);
+
+          this.addForms.splice(scope.$index, 1);
           this.$message({
             type: "success",
             message: "删除成功!"
