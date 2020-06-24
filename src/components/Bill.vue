@@ -48,7 +48,7 @@
               icon="el-icon-edit"
               @click="editBillDialog(scope.row)"
             >编辑</el-button>
-            <el-button size="mini" type="danger" icon="el-icon-edit" @click="delBill(scope)">删除</el-button>
+            <el-button size="mini" type="danger" icon="el-icon-delete" @click="delBill(scope)">删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -68,19 +68,33 @@
         </el-form-item>
         <el-form-item label="参与人" prop="aaersName">
           <el-checkbox-group v-model="addForm.aaersId">
-            <el-checkbox
-              v-for="item in aaers"
-              :label="item.id"
-              :key="item.id"
-              :value="item.id"
-              checked
-            >{{item.name}}</el-checkbox>
+            <el-checkbox v-for="item in aaers" :label="item.id" :key="item.id" checked>{{item.name}}</el-checkbox>
           </el-checkbox-group>
         </el-form-item>
       </el-form>
       <span slot="footer" class="dialog-footer">
         <el-button @click="addDialogVisible = false">取 消</el-button>
         <el-button type="primary" @click="addAAerBill">确 定</el-button>
+      </span>
+    </el-dialog>
+
+    <el-dialog title="编辑账单" :visible.sync="editDialogVisible" width="30%">
+      <el-form :model="editForm" :rules="addFormRules" ref="editFormRef" label-width="80px">
+        <el-form-item label="支付人" prop="payManId">
+          <el-input disabled v-model="editForm.payman"></el-input>
+        </el-form-item>
+        <el-form-item label="支付金额" prop="paynum">
+          <el-input type="number" v-model.number="editForm.paynum"></el-input>
+        </el-form-item>
+        <el-form-item label="参与人" prop="aaersName">
+          <el-checkbox-group v-model="editForm.aaersId">
+            <el-checkbox v-for="item in aaers" :label="item.id" :key="item.id">{{item.name}}</el-checkbox>
+          </el-checkbox-group>
+        </el-form-item>
+      </el-form>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="editDialogVisible = false">取 消</el-button>
+        <el-button type="primary" @click="editAAerBill">确 定</el-button>
       </span>
     </el-dialog>
 
@@ -104,9 +118,17 @@ export default {
       inputVisible: false,
       inputValue: "",
       addDialogVisible: false,
+      editDialogVisible: false,
       calDialogVisible: false,
       addForms: [],
       addForm: {
+        payman: "",
+        payManId: "",
+        paynum: 0,
+        aaersName: [],
+        aaersId: []
+      },
+      editForm: {
         payman: "",
         payManId: "",
         paynum: 0,
@@ -120,6 +142,33 @@ export default {
     };
   },
   methods: {
+    editAAerBill() {
+      let index = this.addForms.findIndex(
+        x => x.payManId === this.editForm.payManId
+      );
+      this.addForms[index].paynum = this.editForm.paynum;
+      this.addForms[index].aaersId = this.editForm.aaersId;
+      let listName = [];
+      for (let item of this.editForm.aaersId) {
+        let index2 = this.aaers.findIndex(x => x.id == item);
+        let name = this.aaers[index2].name;
+        listName.push(name);
+      }
+      this.addForms[index].aaersName = listName;
+
+      let index3 = this.aaers.findIndex(x => x.id === this.editForm.payManId);
+      this.aaers[index3].pay =
+        this.aaers[index3].pay - this.addForm.paynum + this.editForm.paynum;
+      for (let item2 of this.aaers) {
+        item2.expend -= this.addForm.paynum / this.editForm.aaersId.length;
+        item2.expend += this.editForm.paynum / this.editForm.aaersId.length;
+      }
+
+      this.calAAers();
+      this.aaers.sort(this.sortObj("collect", 0));
+      this.calBill(this.aaers);
+      this.editDialogVisible = false;
+    },
     testData() {
       this.aaers = [
         {
@@ -171,8 +220,22 @@ export default {
         }
       ];
     },
-    editBillDialog() {},
+    editBillDialog(row) {
+      this.editForm = row;
+      this.addForm = {
+        aaersId: row.aaersId,
+        aaersName: row.aaersName,
+        payManId: row.payManId,
+        payman: row.payman,
+        paynum: row.paynum
+      };
+      this.editDialogVisible = true;
+    },
     calBill(list) {
+      this.listLog = [];
+      for (let item of this.aaers) {
+        item.recpay = 0;
+      }
       let minIndex = 0;
 
       for (let item of list) {
@@ -273,11 +336,11 @@ export default {
         .then(() => {
           let index = this.aaers.findIndex(x => x.id === scope.row.payManId);
           this.aaers[index].pay -= scope.row.paynum;
-          for(let item of scope.row.aaersId)
-          {
-            this.aaers[this.aaers.findIndex(x => x.id === item)].expend -= scope.row.paynum / scope.row.aaersId.length
+          for (let item of scope.row.aaersId) {
+            this.aaers[this.aaers.findIndex(x => x.id === item)].expend -=
+              scope.row.paynum / scope.row.aaersId.length;
           }
-          this.calAAers()
+          this.calAAers();
           this.listLog = [];
           // this.aaers.sort(this.sortObj("collect", 0));
           // this.calBill(this.aaers);
