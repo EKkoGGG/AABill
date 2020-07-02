@@ -5,7 +5,7 @@ import './plugins/element.js'
 import './assets/css/global.css'
 import axios from 'axios'
 
-// axios.defaults.baseURL = 'https://www.liulongbin.top:8888/api/private/v1/'
+axios.defaults.baseURL = 'https://localhost:44324/api/Bill/'
 // axios.interceptors.request.use(config =>{
 //   //console.log(config)
 //   config.headers.Authorization = sessionStorage.getItem('token')
