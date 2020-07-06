@@ -15,7 +15,7 @@ const routes = [
     path: '/Welcome',
     component: Welcome,
     children: [{
-      path: '/Bill',
+      path: '/Bill/:roomId',
       component: Bill
     },
     {

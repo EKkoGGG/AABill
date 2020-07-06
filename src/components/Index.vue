@@ -50,7 +50,7 @@ export default {
   methods: {
     async creatNewRoomGet() {
       await this.$http.get("NewRoom").then(res => {
-        console.log(res);
+        // console.log(res);
         if (res.status != 200) {
           return this.$message.error("创建失败，请重试！");
         }
@@ -62,12 +62,12 @@ export default {
       this.$refs.roomFormRef.validate(async valid => {
         if (!valid) return;
         await this.$http.post("NewRoom", this.roomForm).then(res => {
-          console.log(res);
+          // console.log(res);
           if (res.status != 200) {
             return this.$message.error("创建失败，请重试！");
           }
           //sessionStorage.setItem("token",res.data.data.token)
-          this.$router.push("/Bills");
+          this.$router.push("/Bill/" + this.roomForm.roomId);
         });
       });
     }
