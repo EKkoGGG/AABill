@@ -31,13 +31,13 @@
         <el-button type="primary" @click="testData">test</el-button>
       </el-row>
 
-      <el-table :data="addForms" border stripe>
+      <el-table :data="BillInfo" border stripe>
         <el-table-column type="index"></el-table-column>
-        <el-table-column label="支付人" prop="payman"></el-table-column>
-        <el-table-column label="支付金额" prop="paynum"></el-table-column>
+        <el-table-column label="支付人" prop="payerName"></el-table-column>
+        <el-table-column label="支付金额" prop="payNum"></el-table-column>
         <el-table-column label="参与人">
           <template v-slot="scope">
-            <el-tag v-for="item in scope.row.aaersName" :key="item">{{item}}</el-tag>
+            <el-tag v-for="item in scope.row.payerIds" :key="item">{{item}}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="操作">
@@ -138,10 +138,37 @@ export default {
       addFormRules: {
         paynum: [{ required: true, message: "请输入支付金额", trigger: "blur" }]
       },
-      listLog: []
+      listLog: [],
+      BillInfo: [],
+      Bill: {}
     };
   },
+  created() {
+    this.GetBill();
+  },
   methods: {
+    GetPayerNameById() {},
+    GetBillInfo(bill) {
+      //console.log(this.Bill);
+      let billInfo = {
+        payerName: bill.billInfo[0].payerId,
+        payNum: bill.billInfo[0].payNum,
+        payerIds: bill.billInfo[0].payerIds
+      };
+      this.BillInfo.push(billInfo);
+    },
+    async GetBill() {
+      await this.$http.get(this.$route.params.roomId).then(res => {
+        // console.log(res);
+        if (res.status != 200) {
+          return this.$message.error("获取账单失败，请重试！");
+        }
+        this.Bill = res.data;
+        console.log(this.Bill);
+
+        this.GetBillInfo(res.data);
+      });
+    },
     editAAerBill() {
       let index = this.addForms.findIndex(
         x => x.payManId === this.editForm.payManId
