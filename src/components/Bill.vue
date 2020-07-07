@@ -7,13 +7,13 @@
         </el-col>
         <el-col :span="21.5">
           <el-tag
-            :key="tag.id"
-            v-for="tag in aaers"
+            :key="tag.payerId"
+            v-for="tag in Bill.payerInfo"
             closable
             :disable-transitions="true"
-            @close="handleClose(tag.id)"
+            @close="handleClose(tag.payerId)"
             @click="editTag(tag)"
-          >{{tag.name}}</el-tag>
+          >{{tag.payerName}}</el-tag>
           <el-input
             class="input-new-tag"
             v-if="inputVisible"
@@ -147,15 +147,33 @@ export default {
     this.GetBill();
   },
   methods: {
-    GetPayerNameById() {},
-    GetBillInfo(bill) {
-      //console.log(this.Bill);
-      let billInfo = {
-        payerName: bill.billInfo[0].payerId,
-        payNum: bill.billInfo[0].payNum,
-        payerIds: bill.billInfo[0].payerIds
-      };
-      this.BillInfo.push(billInfo);
+    GetPayerNamesByIds(payerIds) {
+      let payerNames = [];
+      for (let payerId of payerIds) {
+        for (let item of this.Bill.payerInfo) {
+          if (item.payerId === payerId) {
+            payerNames.push(item.payerName);
+          }
+        }
+      }
+      return payerNames;
+    },
+    GetPayerNameById(payerId) {
+      for (let item of this.Bill.payerInfo) {
+        if (item.payerId === payerId) {
+          return item.payerName;
+        }
+      }
+    },
+    GetBillInfo() {
+      for (let item of this.Bill.billInfo) {
+        let billInfo = {
+          payerName: this.GetPayerNameById(item.payerId),
+          payNum: item.payNum,
+          payerIds: this.GetPayerNamesByIds(item.payerIds)
+        };
+        this.BillInfo.push(billInfo);
+      }
     },
     async GetBill() {
       await this.$http.get(this.$route.params.roomId).then(res => {
@@ -164,9 +182,7 @@ export default {
           return this.$message.error("获取账单失败，请重试！");
         }
         this.Bill = res.data;
-        console.log(this.Bill);
-
-        this.GetBillInfo(res.data);
+        this.GetBillInfo();
       });
     },
     editAAerBill() {
