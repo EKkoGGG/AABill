@@ -15,12 +15,12 @@
           >{{tag.payerName}}</el-tag>
           <el-input
             class="input-new-tag"
-            v-if="inputVisible"
-            v-model="inputValue"
+            v-if="inputTagVisible"
+            v-model="inputTagValue"
             ref="saveTagInput"
             size="small"
-            @keyup.enter.native="handleInputConfirm"
-            @blur="handleInputConfirm"
+            @keyup.enter.native="CreatPayer"
+            @blur="CreatPayer"
           ></el-input>
           <el-button v-else class="button-new-tag" size="small" @click="showInput">+ 添加参与者</el-button>
         </el-col>
@@ -114,8 +114,8 @@ export default {
   data() {
     return {
       aaers: [],
-      inputVisible: false,
-      inputValue: "",
+      inputTagVisible: false,
+      inputTagValue: "",
       addDialogVisible: false,
       editDialogVisible: false,
       calDialogVisible: false,
@@ -146,8 +146,29 @@ export default {
     this.GetBill();
   },
   methods: {
+    async CreatPayer() {
+      let tagValue = this.inputTagValue;
+      if (tagValue) {
+        let url =
+          this.$route.params.roomId + "/PayerInfo?payerName=" + tagValue;
+        await this.$http.post(url).then(res => {
+          if (res.status != 200) {
+            return this.$message.error("添加用户失败，请重试！");
+          }
+          this.GetBill();
+          return this.$message.success("添加用户成功！");
+        });
+      }
+      this.inputTagVisible = false;
+      this.inputTagValue = "";
+    },
     async EditPayer(tag) {
-      let url = this.$route.params.roomId + "/PayerInfo/" + tag.payerId + '?payerName=' + tag.payerName;
+      let url =
+        this.$route.params.roomId +
+        "/PayerInfo/" +
+        tag.payerId +
+        "?payerName=" +
+        tag.payerName;
       await this.$http.patch(url).then(res => {
         console.log(res);
         if (res.status != 200) {
@@ -164,6 +185,7 @@ export default {
           return this.$message.error("删除用户失败，请重试！");
         }
         this.GetBill();
+        return this.$message.success("删除用户成功！");
       });
     },
     GetPayerNamesByIds(payerIds) {
@@ -423,24 +445,15 @@ export default {
         });
     },
     showInput() {
-      this.inputVisible = true;
+      this.inputTagVisible = true;
       this.$nextTick(_ => {
         this.$refs.saveTagInput.$refs.input.focus();
       });
     },
-
-    handleInputConfirm() {
-      let inputValue = this.inputValue;
-      if (inputValue) {
-        this.addAAer(inputValue);
-      }
-      this.inputVisible = false;
-      this.inputValue = "";
-    },
-    addAAer(inputValue) {
+    addAAer(inputTagValue) {
       let newAAer = {
         id: this.aaers.length + 1,
-        name: inputValue,
+        name: inputTagValue,
         pay: 0,
         expend: 0,
         collect: 0,
