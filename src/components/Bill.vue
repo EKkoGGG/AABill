@@ -11,8 +11,7 @@
             v-for="tag in Bill.payerInfo"
             closable
             :disable-transitions="true"
-            @close="handleClose(tag.payerId)"
-            @click="editTag(tag)"
+            @close="DelPayer(tag.payerId)"
           >{{tag.payerName}}</el-tag>
           <el-input
             class="input-new-tag"
@@ -147,6 +146,26 @@ export default {
     this.GetBill();
   },
   methods: {
+    async EditPayer(tag) {
+      let url = this.$route.params.roomId + "/PayerInfo/" + tag.payerId + '?payerName=' + tag.payerName;
+      await this.$http.patch(url).then(res => {
+        console.log(res);
+        if (res.status != 200) {
+          return this.$message.error("删除用户失败，请重试！");
+        }
+        this.GetBill();
+      });
+    },
+    async DelPayer(payerId) {
+      let url = this.$route.params.roomId + "/PayerInfo/" + payerId;
+      await this.$http.delete(url).then(res => {
+        // console.log(res);
+        if (res.status != 200) {
+          return this.$message.error("删除用户失败，请重试！");
+        }
+        this.GetBill();
+      });
+    },
     GetPayerNamesByIds(payerIds) {
       let payerNames = [];
       for (let payerId of payerIds) {
@@ -167,6 +186,7 @@ export default {
     },
     GetBillInfo() {
       for (let item of this.Bill.billInfo) {
+        this.BillInfo = [];
         let billInfo = {
           payerName: this.GetPayerNameById(item.payerId),
           payNum: item.payNum,
@@ -416,10 +436,6 @@ export default {
       }
       this.inputVisible = false;
       this.inputValue = "";
-    },
-
-    editTag(tag) {
-      // console.log(tag);
     },
     addAAer(inputValue) {
       let newAAer = {
