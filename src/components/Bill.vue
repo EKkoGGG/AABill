@@ -26,8 +26,7 @@
         </el-col>
       </el-row>
       <el-row>
-        <el-button type="primary" @click="addDialogVisible = true">添加账单</el-button>
-        <el-button type="primary" @click="testData">test</el-button>
+        <el-button type="primary" @click="billInfoDialogVisible = true">添加账单</el-button>
       </el-row>
 
       <el-table :data="BillInfo" border stripe>
@@ -47,7 +46,12 @@
               icon="el-icon-edit"
               @click="editBillDialog(scope.row)"
             >编辑</el-button>
-            <el-button size="mini" type="danger" icon="el-icon-delete" @click="delBill(scope)">删除</el-button>
+            <el-button
+              size="mini"
+              type="danger"
+              icon="el-icon-delete"
+              @click="DelBillInfo(scope)"
+            >删除</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -55,30 +59,50 @@
       <el-button class="clsBtn" type="primary" @click="calAAerBill">分账</el-button>
     </el-card>
 
-    <el-dialog title="添加账单" :visible.sync="addDialogVisible" width="30%" @close="addDialogClosed">
-      <el-form :model="addForm" :rules="addFormRules" ref="addFormRef" label-width="80px">
-        <el-form-item label="支付人" prop="payManId">
-          <el-select class="select-payman" v-model="addForm.payManId" placeholder="请选择">
-            <el-option v-for="item in aaers" :key="item.id" :label="item.name" :value="item.id"></el-option>
+    <el-dialog
+      title="添加账单"
+      :visible.sync="billInfoDialogVisible"
+      width="30%"
+      @close="billInfoDialogClosed"
+    >
+      <el-form
+        :model="billInfoForm"
+        :rules="billInfoFormRules"
+        ref="billInfoFormRef"
+        label-width="80px"
+      >
+        <el-form-item label="支付人" prop="payerId">
+          <el-select class="select-payer" v-model="billInfoForm.payerId" placeholder="请选择">
+            <el-option
+              v-for="item in Bill.payerInfo"
+              :key="item.payerId"
+              :label="item.payerName"
+              :value="item.payerId"
+            ></el-option>
           </el-select>
         </el-form-item>
-        <el-form-item label="支付金额" prop="paynum">
-          <el-input type="number" v-model.number="addForm.paynum"></el-input>
+        <el-form-item label="支付金额" prop="payNum">
+          <el-input type="number" v-model.number="billInfoForm.payNum"></el-input>
         </el-form-item>
-        <el-form-item label="参与人" prop="aaersName">
-          <el-checkbox-group v-model="addForm.aaersId">
-            <el-checkbox v-for="item in aaers" :label="item.id" :key="item.id" checked>{{item.name}}</el-checkbox>
+        <el-form-item label="参与人" prop="payerIds">
+          <el-checkbox-group v-model="billInfoForm.payerIds">
+            <el-checkbox
+              v-for="item in Bill.payerInfo"
+              :label="item.payerId"
+              :key="item.payerId"
+              checked
+            >{{item.payerName}}</el-checkbox>
           </el-checkbox-group>
         </el-form-item>
       </el-form>
       <span slot="footer" class="dialog-footer">
-        <el-button @click="addDialogVisible = false">取 消</el-button>
-        <el-button type="primary" @click="addAAerBill">确 定</el-button>
+        <el-button @click="billInfoDialogVisible = false">取 消</el-button>
+        <el-button type="primary" @click="CreatBillInfo">确 定</el-button>
       </span>
     </el-dialog>
 
     <el-dialog title="编辑账单" :visible.sync="editDialogVisible" width="30%">
-      <el-form :model="editForm" :rules="addFormRules" ref="editFormRef" label-width="80px">
+      <el-form :model="editForm" :rules="billInfoFormRules" ref="editFormRef" label-width="80px">
         <el-form-item label="支付人" prop="payManId">
           <el-input disabled v-model="editForm.payman"></el-input>
         </el-form-item>
@@ -116,16 +140,14 @@ export default {
       aaers: [],
       inputTagVisible: false,
       inputTagValue: "",
-      addDialogVisible: false,
+      billInfoDialogVisible: false,
       editDialogVisible: false,
       calDialogVisible: false,
-      addForms: [],
-      addForm: {
-        payman: "",
-        payManId: "",
-        paynum: 0,
-        aaersName: [],
-        aaersId: []
+      billInfoForms: [],
+      billInfoForm: {
+        payerId: null,
+        payNum: null,
+        payerIds: []
       },
       editForm: {
         payman: "",
@@ -134,8 +156,21 @@ export default {
         aaersName: [],
         aaersId: []
       },
-      addFormRules: {
-        paynum: [{ required: true, message: "请输入支付金额", trigger: "blur" }]
+      billInfoFormRules: {
+        payNum: [
+          { required: true, message: "请输入支付金额", trigger: "blur" }
+        ],
+        payerIds: [
+          {
+            type: "array",
+            required: true,
+            message: "请至少选择一个参与人",
+            trigger: "change"
+          }
+        ],
+        payerId: [
+          { required: true, message: "请选择支付人", trigger: "change" }
+        ]
       },
       listLog: [],
       BillInfo: [],
@@ -146,6 +181,41 @@ export default {
     this.GetBill();
   },
   methods: {
+    DelBillInfo(scope) {
+      console.log(scope.$index);
+    },
+    CheckBillInfoForm() {
+      let res = true;
+      this.$refs.billInfoFormRef.validate(valid => {
+        if (!valid) {
+          this.$message.error("账单信息填写错误，请重试！");
+          res = false;
+        }
+      });
+      return res;
+    },
+    GetPayerIds() {
+      let payerIds = [];
+      this.Bill.payerInfo.forEach(r => payerIds.push(r.payerId));
+      return payerIds;
+    },
+    async CreatBillInfo() {
+      if (this.CheckBillInfoForm()) {
+        let url = this.$route.params.roomId + "/BillInfo";
+        await this.$http.post(url, this.billInfoForm).then(res => {
+          if (res.status != 200) {
+            return this.$message.error("添加账单失败，请重试！");
+          }
+          this.GetBill();
+        });
+        this.billInfoDialogVisible = false;
+        this.billInfoForm = {
+          payerId: null,
+          payNum: null,
+          payerIds: this.GetPayerIds()
+        };
+      }
+    },
     async CreatPayer() {
       let tagValue = this.inputTagValue;
       if (tagValue) {
@@ -207,8 +277,8 @@ export default {
       }
     },
     GetBillInfo() {
+      this.BillInfo = [];
       for (let item of this.Bill.billInfo) {
-        this.BillInfo = [];
         let billInfo = {
           payerName: this.GetPayerNameById(item.payerId),
           payNum: item.payNum,
@@ -228,24 +298,26 @@ export default {
       });
     },
     editAAerBill() {
-      let index = this.addForms.findIndex(
+      let index = this.billInfoForms.findIndex(
         x => x.payManId === this.editForm.payManId
       );
-      this.addForms[index].paynum = this.editForm.paynum;
-      this.addForms[index].aaersId = this.editForm.aaersId;
+      this.billInfoForms[index].paynum = this.editForm.paynum;
+      this.billInfoForms[index].aaersId = this.editForm.aaersId;
       let listName = [];
       for (let item of this.editForm.aaersId) {
         let index2 = this.aaers.findIndex(x => x.id == item);
         let name = this.aaers[index2].name;
         listName.push(name);
       }
-      this.addForms[index].aaersName = listName;
+      this.billInfoForms[index].aaersName = listName;
 
       let index3 = this.aaers.findIndex(x => x.id === this.editForm.payManId);
       this.aaers[index3].pay =
-        this.aaers[index3].pay - this.addForm.paynum + this.editForm.paynum;
+        this.aaers[index3].pay -
+        this.billInfoForm.paynum +
+        this.editForm.paynum;
       for (let item2 of this.aaers) {
-        item2.expend -= this.addForm.paynum / this.editForm.aaersId.length;
+        item2.expend -= this.billInfoForm.paynum / this.editForm.aaersId.length;
         item2.expend += this.editForm.paynum / this.editForm.aaersId.length;
       }
 
@@ -254,60 +326,9 @@ export default {
       this.calBill(this.aaers);
       this.editDialogVisible = false;
     },
-    testData() {
-      this.aaers = [
-        {
-          collect: -30,
-          expend: 90,
-          id: 3,
-          name: "C",
-          pay: 60,
-          recpay: 0
-        },
-        {
-          collect: 0,
-          expend: 90,
-          id: 2,
-          name: "B",
-          pay: 90,
-          recpay: 0
-        },
-        {
-          collect: 30,
-          expend: 90,
-          id: 1,
-          name: "A",
-          pay: 120,
-          recpay: 0
-        }
-      ];
-      this.addForms = [
-        {
-          aaersId: [1, 2, 3],
-          aaersName: ["A", "B", "C"],
-          payManId: 1,
-          payman: "A",
-          paynum: 120
-        },
-        {
-          aaersId: [1, 2, 3],
-          aaersName: ["A", "B", "C"],
-          payManId: 2,
-          payman: "B",
-          paynum: 90
-        },
-        {
-          aaersId: [1, 2, 3],
-          aaersName: ["A", "B", "C"],
-          payManId: 3,
-          payman: "C",
-          paynum: 60
-        }
-      ];
-    },
     editBillDialog(row) {
       this.editForm = row;
-      this.addForm = {
+      this.billInfoForm = {
         aaersId: row.aaersId,
         aaersName: row.aaersName,
         payManId: row.payManId,
@@ -377,8 +398,8 @@ export default {
       this.aaers.sort(this.sortObj("collect", 0));
       this.calBill(this.aaers);
     },
-    addDialogClosed() {
-      // this.$refs.addFormRef.resetFields();
+    billInfoDialogClosed() {
+      // this.$refs.billInfoFormRef.resetFields();
       // console.log(this.aaers);
     },
     clsBill(billForm) {
@@ -390,24 +411,26 @@ export default {
       this.calAAers();
     },
     addAAerBill() {
-      this.addForm.payman = this.aaers[this.addForm.payManId - 1].name;
-      this.addForm.aaersId.forEach(itemId => {
-        this.addForm.aaersName.push(this.aaers[itemId - 1].name);
+      this.billInfoForm.payman = this.aaers[
+        this.billInfoForm.payManId - 1
+      ].name;
+      this.billInfoForm.aaersId.forEach(itemId => {
+        this.billInfoForm.aaersName.push(this.aaers[itemId - 1].name);
       });
 
-      this.addForms.push(this.addForm);
+      this.billInfoForms.push(this.billInfoForm);
 
-      this.clsBill(this.addForm);
+      this.clsBill(this.billInfoForm);
 
-      this.addDialogVisible = false;
-      this.addForm = {
+      this.billInfoDialogVisible = false;
+      this.billInfoForm = {
         payman: "",
         payManId: "",
         paynum: 0,
         aaersName: [],
         aaersId: []
       };
-      // console.log(this.addForms);
+      // console.log(this.billInfoForms);
     },
     handleClose(id) {
       this.aaers.splice(this.aaers.indexOf(id), 1);
@@ -431,7 +454,7 @@ export default {
           // this.calBill(this.aaers);
           // console.log(this.listLog);
 
-          this.addForms.splice(scope.$index, 1);
+          this.billInfoForms.splice(scope.$index, 1);
           this.$message({
             type: "success",
             message: "删除成功!"
@@ -489,7 +512,7 @@ export default {
   align-items: center;
   margin-bottom: 15px;
 }
-.select-payman {
+.select-payer {
   width: 100%;
 }
 .clsBtn {
