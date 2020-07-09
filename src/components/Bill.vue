@@ -50,7 +50,7 @@
               size="mini"
               type="danger"
               icon="el-icon-delete"
-              @click="DelBillInfo(scope)"
+              @click="DelBillInfo(scope.row.billInfoId)"
             >删除</el-button>
           </template>
         </el-table-column>
@@ -181,8 +181,31 @@ export default {
     this.GetBill();
   },
   methods: {
-    DelBillInfo(scope) {
-      console.log(scope.$index);
+    async DelBillInfo(billInfoId) {
+      this.$confirm("是否删除该账单条目?", "提示", {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning"
+      })
+        .then(async () => {
+          let url = this.$route.params.roomId + "/BillInfo/" + billInfoId;
+          await this.$http.delete(url).then(res => {
+            if (res.status != 200) {
+              return this.$message.error("删除账单失败，请重试！");
+            }
+            this.GetBill();
+          });
+          this.$message({
+            type: "success",
+            message: "删除成功!"
+          });
+        })
+        .catch(() => {
+          this.$message({
+            type: "info",
+            message: "已取消删除"
+          });
+        });
     },
     CheckBillInfoForm() {
       let res = true;
@@ -248,15 +271,31 @@ export default {
       });
     },
     async DelPayer(payerId) {
-      let url = this.$route.params.roomId + "/PayerInfo/" + payerId;
-      await this.$http.delete(url).then(res => {
-        // console.log(res);
-        if (res.status != 200) {
-          return this.$message.error("删除用户失败，请重试！");
-        }
-        this.GetBill();
-        return this.$message.success("删除用户成功！");
-      });
+      this.$confirm("是否删除该用户?涉及到此用户的账单也会对应删除", "提示", {
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning"
+      })
+        .then(async () => {
+          let url = this.$route.params.roomId + "/PayerInfo/" + payerId;
+          await this.$http.delete(url).then(res => {
+            // console.log(res);
+            if (res.status != 200) {
+              return this.$message.error("删除用户失败，请重试！");
+            }
+            this.GetBill();
+          });
+          this.$message({
+            type: "success",
+            message: "删除成功!"
+          });
+        })
+        .catch(() => {
+          this.$message({
+            type: "info",
+            message: "已取消删除"
+          });
+        });
     },
     GetPayerNamesByIds(payerIds) {
       let payerNames = [];
@@ -280,6 +319,7 @@ export default {
       this.BillInfo = [];
       for (let item of this.Bill.billInfo) {
         let billInfo = {
+          billInfoId: item.billInfoId,
           payerName: this.GetPayerNameById(item.payerId),
           payNum: item.payNum,
           payerIds: this.GetPayerNamesByIds(item.payerIds)
