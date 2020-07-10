@@ -35,7 +35,7 @@
         <el-table-column label="支付金额" prop="payNum"></el-table-column>
         <el-table-column label="参与人">
           <template v-slot="scope">
-            <el-tag v-for="item in scope.row.payerIds" :key="item">{{item}}</el-tag>
+            <el-tag v-for="item in scope.row.payerNames" :key="item">{{item}}</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="操作">
@@ -44,7 +44,7 @@
               size="mini"
               type="primary"
               icon="el-icon-edit"
-              @click="editBillDialog(scope.row)"
+              @click="OpenEditBillInfoDig(scope.row)"
             >编辑</el-button>
             <el-button
               size="mini"
@@ -56,7 +56,7 @@
         </el-table-column>
       </el-table>
 
-      <el-button class="clsBtn" type="primary" @click="calAAerBill">分账</el-button>
+      <el-button class="clsBtn" type="primary" @click="CalBill">分账</el-button>
     </el-card>
 
     <el-dialog
@@ -101,33 +101,42 @@
       </span>
     </el-dialog>
 
-    <el-dialog title="编辑账单" :visible.sync="editDialogVisible" width="30%">
-      <el-form :model="editForm" :rules="billInfoFormRules" ref="editFormRef" label-width="80px">
-        <el-form-item label="支付人" prop="payManId">
-          <el-input disabled v-model="editForm.payman"></el-input>
+    <el-dialog title="编辑账单" :visible.sync="editBillInfoVisible" width="30%">
+      <el-form
+        :model="billInfoForm"
+        :rules="billInfoFormRules"
+        ref="billInfoFormRef"
+        label-width="80px"
+      >
+        <el-form-item label="支付人" prop="payerName">
+          <el-input disabled v-model="billInfoForm.payerName"></el-input>
         </el-form-item>
-        <el-form-item label="支付金额" prop="paynum">
-          <el-input type="number" v-model.number="editForm.paynum"></el-input>
+        <el-form-item label="支付金额" prop="payNum">
+          <el-input type="number" v-model.number="billInfoForm.payNum"></el-input>
         </el-form-item>
-        <el-form-item label="参与人" prop="aaersName">
-          <el-checkbox-group v-model="editForm.aaersId">
-            <el-checkbox v-for="item in aaers" :label="item.id" :key="item.id">{{item.name}}</el-checkbox>
+        <el-form-item label="参与人" prop="payerIds">
+          <el-checkbox-group v-model="billInfoForm.payerIds">
+            <el-checkbox
+              v-for="item in Bill.payerInfo"
+              :label="item.payerId"
+              :key="item.payerId"
+            >{{item.payerName}}</el-checkbox>
           </el-checkbox-group>
         </el-form-item>
       </el-form>
       <span slot="footer" class="dialog-footer">
-        <el-button @click="editDialogVisible = false">取 消</el-button>
-        <el-button type="primary" @click="editAAerBill">确 定</el-button>
+        <el-button @click="editBillInfoVisible = false">取 消</el-button>
+        <el-button type="primary" @click="EditBillInfo">确 定</el-button>
       </span>
     </el-dialog>
 
-    <el-dialog title="分账" :visible.sync="calDialogVisible" width="30%">
-      <el-row v-for="(item,index) in listLog" :key="index">
+    <el-dialog title="分账" :visible.sync="calBillVisible" width="30%">
+      <el-row v-for="(item,index) in billList" :key="index">
         <span>{{item}}</span>
       </el-row>
       <span slot="footer" class="dialog-footer">
-        <el-button @click="calDialogVisible = false">取 消</el-button>
-        <el-button type="primary" @click="calDialogVisible = false">确 定</el-button>
+        <el-button @click="calBillVisible = false">取 消</el-button>
+        <el-button type="primary" @click="calBillVisible = false">确 定</el-button>
       </span>
     </el-dialog>
   </div>
@@ -141,8 +150,8 @@ export default {
       inputTagVisible: false,
       inputTagValue: "",
       billInfoDialogVisible: false,
-      editDialogVisible: false,
-      calDialogVisible: false,
+      editBillInfoVisible: false,
+      calBillVisible: false,
       billInfoForms: [],
       billInfoForm: {
         payerId: null,
@@ -172,15 +181,73 @@ export default {
           { required: true, message: "请选择支付人", trigger: "change" }
         ]
       },
-      listLog: [],
+      billList: [],
       BillInfo: [],
       Bill: {}
+      // calBillObj:{},
     };
   },
   created() {
     this.GetBill();
   },
   methods: {
+    AddPayerNum(calBillObj, payerId, payNum) {
+      let index = 0;
+      for (let billObj of calBillObj) {
+        if (billObj.payerId == payerId) {
+          calBillObj[index].payNum += payNum;
+          break;
+        }
+        index++;
+      }
+    },
+    AddExpend(calBillObj, payerIds, expend) {
+      for (let item of payerIds) {
+        let index = 0;
+        for (let billObj of calBillObj) {
+          if (billObj.payerId == item) {
+            calBillObj[index].expend += expend;
+          }
+          index++;
+        }
+      }
+    },
+    CalBill() {
+      this.calBillVisible = true;
+      let calBillObj = JSON.parse(JSON.stringify(this.Bill.payerInfo));
+      calBillObj.forEach(c => (c.expend = 0));
+      calBillObj.forEach(c => (c.payNum = 0));
+      for (let item of this.BillInfo) {
+        let expend = item.payNum / item.payerIds.length;
+        this.AddExpend(calBillObj, item.payerIds, expend);
+
+        this.AddPayerNum(calBillObj, item.payerId, item.payNum);
+      }
+      console.log(calBillObj);
+    },
+    OpenEditBillInfoDig(row) {
+      this.billInfoForm = {
+        billInfoId: row.billInfoId,
+        payerId: row.payerId,
+        payerName: row.payerName,
+        payNum: row.payNum,
+        payerIds: row.payerIds,
+        payerNames: row.payerNames
+      };
+      this.editBillInfoVisible = true;
+    },
+    async EditBillInfo() {
+      let url =
+        this.$route.params.roomId + "/BillInfo/" + this.billInfoForm.billInfoId;
+      await this.$http.patch(url, this.billInfoForm).then(res => {
+        if (res.status != 200) {
+          return this.$message.error("编辑账单失败，请重试！");
+        }
+        this.GetBill();
+      });
+      this.editBillInfoVisible = false;
+      this.$message.success("编辑账单成功！");
+    },
     async DelBillInfo(billInfoId) {
       this.$confirm("是否删除该账单条目?", "提示", {
         confirmButtonText: "确定",
@@ -265,17 +332,21 @@ export default {
       await this.$http.patch(url).then(res => {
         console.log(res);
         if (res.status != 200) {
-          return this.$message.error("删除用户失败，请重试！");
+          return this.$message.error("修改用户失败，请重试！");
         }
         this.GetBill();
       });
     },
     async DelPayer(payerId) {
-      this.$confirm("是否删除该用户?涉及到此用户的账单也会对应删除", "提示", {
-        confirmButtonText: "确定",
-        cancelButtonText: "取消",
-        type: "warning"
-      })
+      this.$confirm(
+        "是否删除该用户，涉及到此用户的账单也会对应删除！",
+        "提示",
+        {
+          confirmButtonText: "确定",
+          cancelButtonText: "取消",
+          type: "warning"
+        }
+      )
         .then(async () => {
           let url = this.$route.params.roomId + "/PayerInfo/" + payerId;
           await this.$http.delete(url).then(res => {
@@ -320,9 +391,11 @@ export default {
       for (let item of this.Bill.billInfo) {
         let billInfo = {
           billInfoId: item.billInfoId,
+          payerId: item.payerId,
           payerName: this.GetPayerNameById(item.payerId),
           payNum: item.payNum,
-          payerIds: this.GetPayerNamesByIds(item.payerIds)
+          payerIds: item.payerIds,
+          payerNames: this.GetPayerNamesByIds(item.payerIds)
         };
         this.BillInfo.push(billInfo);
       }
@@ -364,7 +437,7 @@ export default {
       this.calAAers();
       this.aaers.sort(this.sortObj("collect", 0));
       this.calBill(this.aaers);
-      this.editDialogVisible = false;
+      this.editBillInfoVisible = false;
     },
     editBillDialog(row) {
       this.editForm = row;
@@ -375,10 +448,10 @@ export default {
         payman: row.payman,
         paynum: row.paynum
       };
-      this.editDialogVisible = true;
+      this.editBillInfoVisible = true;
     },
     calBill(list) {
-      this.listLog = [];
+      this.billList = [];
       for (let item of this.aaers) {
         item.recpay = 0;
       }
@@ -399,12 +472,12 @@ export default {
           list[minIndex].recpay += -list[i].collect;
           log = `${list[i].name} 给 ${list[minIndex].name} ${-list[i]
             .collect}元`;
-          this.listLog.push(log);
+          this.billList.push(log);
         } else {
           list[i + 1].recpay += list[i].recpay - list[i].collect;
           log = `${list[i].name} 给 ${list[i + 1].name} ${list[i].recpay -
             list[i].collect}元`;
-          this.listLog.push(log);
+          this.billList.push(log);
         }
       }
     },
@@ -434,7 +507,7 @@ export default {
       };
     },
     calAAerBill() {
-      this.calDialogVisible = true;
+      this.calBillVisible = true;
       this.aaers.sort(this.sortObj("collect", 0));
       this.calBill(this.aaers);
     },
@@ -489,10 +562,10 @@ export default {
               scope.row.paynum / scope.row.aaersId.length;
           }
           this.calAAers();
-          this.listLog = [];
+          this.billList = [];
           // this.aaers.sort(this.sortObj("collect", 0));
           // this.calBill(this.aaers);
-          // console.log(this.listLog);
+          // console.log(this.billList);
 
           this.billInfoForms.splice(scope.$index, 1);
           this.$message({
