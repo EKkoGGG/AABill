@@ -26,7 +26,7 @@
         </el-col>
       </el-row>
       <el-row>
-        <el-button type="primary" @click="billInfoDialogVisible = true">添加账单</el-button>
+        <el-button type="primary" @click="OpenBillInfoDig">添加账单</el-button>
       </el-row>
 
       <el-table :data="BillInfo" border stripe>
@@ -63,7 +63,7 @@
       title="添加账单"
       :visible.sync="billInfoDialogVisible"
       width="30%"
-      @close="billInfoDialogClosed"
+      @close="billInfoDialogVisible =false"
     >
       <el-form
         :model="billInfoForm"
@@ -90,7 +90,6 @@
               v-for="item in Bill.payerInfo"
               :label="item.payerId"
               :key="item.payerId"
-              checked
             >{{item.payerName}}</el-checkbox>
           </el-checkbox-group>
         </el-form-item>
@@ -125,7 +124,7 @@
         </el-form-item>
       </el-form>
       <span slot="footer" class="dialog-footer">
-        <el-button @click="editBillInfoVisible = false">取 消</el-button>
+        <el-button @click="CloseEditBillInfoDig">取 消</el-button>
         <el-button type="primary" @click="EditBillInfo">确 定</el-button>
       </span>
     </el-dialog>
@@ -146,24 +145,15 @@
 export default {
   data() {
     return {
-      aaers: [],
       inputTagVisible: false,
       inputTagValue: "",
       billInfoDialogVisible: false,
       editBillInfoVisible: false,
       calBillVisible: false,
-      billInfoForms: [],
       billInfoForm: {
         payerId: null,
         payNum: null,
         payerIds: []
-      },
-      editForm: {
-        payman: "",
-        payManId: "",
-        paynum: 0,
-        aaersName: [],
-        aaersId: []
       },
       billInfoFormRules: {
         payNum: [
@@ -184,13 +174,24 @@ export default {
       billList: [],
       BillInfo: [],
       Bill: {}
-      // calBillObj:{},
     };
   },
   created() {
     this.GetBill();
   },
   methods: {
+    CleanBillInfoForm() {
+      this.billInfoForm = {
+        payerId: null,
+        payNum: null,
+        payerIds: []
+      };
+    },
+    AddCollect(calBillObj) {
+      for (let item of calBillObj) {
+        item.collect = Number((item.payNum - item.expend).toFixed(2));
+      }
+    },
     AddPayerNum(calBillObj, payerId, payNum) {
       let index = 0;
       for (let billObj of calBillObj) {
@@ -217,13 +218,68 @@ export default {
       let calBillObj = JSON.parse(JSON.stringify(this.Bill.payerInfo));
       calBillObj.forEach(c => (c.expend = 0));
       calBillObj.forEach(c => (c.payNum = 0));
+      calBillObj.forEach(c => (c.collect = 0));
+      calBillObj.forEach(c => (c.recpay = 0));
       for (let item of this.BillInfo) {
         let expend = item.payNum / item.payerIds.length;
+        expend = Number(expend.toFixed(2));
         this.AddExpend(calBillObj, item.payerIds, expend);
 
         this.AddPayerNum(calBillObj, item.payerId, item.payNum);
       }
+      this.AddCollect(calBillObj);
+      calBillObj.sort(this.sortObj("collect", 0));
+      this.OutBillList(calBillObj);
+    },
+    OutBillList(calBillObj) {
       console.log(calBillObj);
+      this.billList = [];
+      let minIndex = 0;
+      for (let item of calBillObj) {
+        if (item.collect > 0) {
+          break;
+        }
+        minIndex++;
+      }
+      let log;
+      if (minIndex === calBillObj.length) {
+        log = "此账单不用分账，每位参与人都收支平衡！";
+        this.billList.push(log);
+        return;
+      }
+      for (let i = 0; i < calBillObj.length; i++) {
+        if (i + 1 === calBillObj.length) {
+          break;
+        }
+        if (i < minIndex) {
+          if (calBillObj[i].collect === 0) {
+            continue;
+          }
+          calBillObj[minIndex].recpay += -calBillObj[i].collect;
+          log = `${calBillObj[i].payerName} 给 ${
+            calBillObj[minIndex].payerName
+          } ${-calBillObj[i].collect}元`;
+          this.billList.push(log);
+        } else {
+          if (calBillObj[i].recpay - calBillObj[i].collect === 0) {
+            continue;
+          }
+          calBillObj[i + 1].recpay +=
+             Number((calBillObj[i].recpay - calBillObj[i].collect).toFixed(2));
+          log = `${calBillObj[i].payerName} 给 ${
+            calBillObj[i + 1].payerName
+          } ${(calBillObj[i].recpay - calBillObj[i].collect).toFixed(2)}元`;
+          this.billList.push(log);
+        }
+      }
+    },
+    OpenBillInfoDig() {
+      this.billInfoForm = {
+        payerId: null,
+        payNum: null,
+        payerIds: this.GetPayerIds()
+      };
+      this.billInfoDialogVisible = true;
     },
     OpenEditBillInfoDig(row) {
       this.billInfoForm = {
@@ -236,6 +292,10 @@ export default {
       };
       this.editBillInfoVisible = true;
     },
+    CloseEditBillInfoDig() {
+      this.editBillInfoVisible = false;
+      this.CleanBillInfoForm();
+    },
     async EditBillInfo() {
       let url =
         this.$route.params.roomId + "/BillInfo/" + this.billInfoForm.billInfoId;
@@ -245,6 +305,7 @@ export default {
         }
         this.GetBill();
       });
+      this.CleanBillInfoForm();
       this.editBillInfoVisible = false;
       this.$message.success("编辑账单成功！");
     },
@@ -296,15 +357,15 @@ export default {
           if (res.status != 200) {
             return this.$message.error("添加账单失败，请重试！");
           }
-          this.GetBill();
         });
-        this.billInfoDialogVisible = false;
-        this.billInfoForm = {
-          payerId: null,
-          payNum: null,
-          payerIds: this.GetPayerIds()
-        };
       }
+      this.GetBill();
+      this.billInfoDialogVisible = false;
+      this.billInfoForm = {
+        payerId: null,
+        payNum: null,
+        payerIds: this.GetPayerIds()
+      };
     },
     async CreatPayer() {
       let tagValue = this.inputTagValue;
@@ -402,84 +463,12 @@ export default {
     },
     async GetBill() {
       await this.$http.get(this.$route.params.roomId).then(res => {
-        // console.log(res);
         if (res.status != 200) {
           return this.$message.error("获取账单失败，请重试！");
         }
         this.Bill = res.data;
-        this.GetBillInfo();
       });
-    },
-    editAAerBill() {
-      let index = this.billInfoForms.findIndex(
-        x => x.payManId === this.editForm.payManId
-      );
-      this.billInfoForms[index].paynum = this.editForm.paynum;
-      this.billInfoForms[index].aaersId = this.editForm.aaersId;
-      let listName = [];
-      for (let item of this.editForm.aaersId) {
-        let index2 = this.aaers.findIndex(x => x.id == item);
-        let name = this.aaers[index2].name;
-        listName.push(name);
-      }
-      this.billInfoForms[index].aaersName = listName;
-
-      let index3 = this.aaers.findIndex(x => x.id === this.editForm.payManId);
-      this.aaers[index3].pay =
-        this.aaers[index3].pay -
-        this.billInfoForm.paynum +
-        this.editForm.paynum;
-      for (let item2 of this.aaers) {
-        item2.expend -= this.billInfoForm.paynum / this.editForm.aaersId.length;
-        item2.expend += this.editForm.paynum / this.editForm.aaersId.length;
-      }
-
-      this.calAAers();
-      this.aaers.sort(this.sortObj("collect", 0));
-      this.calBill(this.aaers);
-      this.editBillInfoVisible = false;
-    },
-    editBillDialog(row) {
-      this.editForm = row;
-      this.billInfoForm = {
-        aaersId: row.aaersId,
-        aaersName: row.aaersName,
-        payManId: row.payManId,
-        payman: row.payman,
-        paynum: row.paynum
-      };
-      this.editBillInfoVisible = true;
-    },
-    calBill(list) {
-      this.billList = [];
-      for (let item of this.aaers) {
-        item.recpay = 0;
-      }
-      let minIndex = 0;
-
-      for (let item of list) {
-        if (item.collect > 0) {
-          break;
-        }
-        minIndex++;
-      }
-      let log;
-      for (let i = 0; i < list.length; i++) {
-        if (i + 1 === list.length) {
-          break;
-        }
-        if (i < minIndex) {
-          list[minIndex].recpay += -list[i].collect;
-          log = `${list[i].name} 给 ${list[minIndex].name} ${-list[i]
-            .collect}元`;
-          this.billList.push(log);
-        } else {
-          list[i + 1].recpay += list[i].recpay - list[i].collect;
-          log = `${list[i].name} 给 ${list[i + 1].name} ${list[i].recpay -
-            list[i].collect}元`;
-          this.billList.push(log);
-        }
-      }
+      this.GetBillInfo();
     },
     sortObj(propertyName, cond) {
       return function(object1, object2) {
@@ -506,101 +495,10 @@ export default {
         }
       };
     },
-    calAAerBill() {
-      this.calBillVisible = true;
-      this.aaers.sort(this.sortObj("collect", 0));
-      this.calBill(this.aaers);
-    },
-    billInfoDialogClosed() {
-      // this.$refs.billInfoFormRef.resetFields();
-      // console.log(this.aaers);
-    },
-    clsBill(billForm) {
-      billForm.aaersId.forEach(itemId => {
-        this.aaers[itemId - 1].expend +=
-          billForm.paynum / billForm.aaersId.length;
-      });
-      this.aaers[billForm.payManId - 1].pay += billForm.paynum;
-      this.calAAers();
-    },
-    addAAerBill() {
-      this.billInfoForm.payman = this.aaers[
-        this.billInfoForm.payManId - 1
-      ].name;
-      this.billInfoForm.aaersId.forEach(itemId => {
-        this.billInfoForm.aaersName.push(this.aaers[itemId - 1].name);
-      });
-
-      this.billInfoForms.push(this.billInfoForm);
-
-      this.clsBill(this.billInfoForm);
-
-      this.billInfoDialogVisible = false;
-      this.billInfoForm = {
-        payman: "",
-        payManId: "",
-        paynum: 0,
-        aaersName: [],
-        aaersId: []
-      };
-      // console.log(this.billInfoForms);
-    },
-    handleClose(id) {
-      this.aaers.splice(this.aaers.indexOf(id), 1);
-    },
-    delBill(scope) {
-      this.$confirm("是否删除该账单条目?", "提示", {
-        confirmButtonText: "确定",
-        cancelButtonText: "取消",
-        type: "warning"
-      })
-        .then(() => {
-          let index = this.aaers.findIndex(x => x.id === scope.row.payManId);
-          this.aaers[index].pay -= scope.row.paynum;
-          for (let item of scope.row.aaersId) {
-            this.aaers[this.aaers.findIndex(x => x.id === item)].expend -=
-              scope.row.paynum / scope.row.aaersId.length;
-          }
-          this.calAAers();
-          this.billList = [];
-          // this.aaers.sort(this.sortObj("collect", 0));
-          // this.calBill(this.aaers);
-          // console.log(this.billList);
-
-          this.billInfoForms.splice(scope.$index, 1);
-          this.$message({
-            type: "success",
-            message: "删除成功!"
-          });
-        })
-        .catch(() => {
-          this.$message({
-            type: "info",
-            message: "已取消删除"
-          });
-        });
-    },
     showInput() {
       this.inputTagVisible = true;
       this.$nextTick(_ => {
         this.$refs.saveTagInput.$refs.input.focus();
-      });
-    },
-    addAAer(inputTagValue) {
-      let newAAer = {
-        id: this.aaers.length + 1,
-        name: inputTagValue,
-        pay: 0,
-        expend: 0,
-        collect: 0,
-        recpay: 0
-      };
-      this.aaers.push(newAAer);
-      // console.log(this.aaers);
-    },
-    calAAers() {
-      this.aaers.forEach(item => {
-        item.collect = item.pay - item.expend;
       });
     }
   }
