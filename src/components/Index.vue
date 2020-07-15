@@ -80,8 +80,21 @@ export default {
     };
   },
   methods: {
-    inBillRoom(){
+    inBillRoom() {
       this.inRoomDialogVisible = true;
+      this.$refs.inRoomFormRef.validate(async valid => {
+        if (!valid) return;
+        await this.$http
+          .post(this.inRoomForm.roomId + "", this.inRoomForm)
+          .then(res => {
+            console.log(res);
+            if (res.status != 200) {
+              return this.$message.error("进入房间失败，请重试！");
+            }
+            sessionStorage.setItem("token", res.data.token);
+            this.$router.push("/Bill/" + this.inRoomForm.roomId);
+          });
+      });
     },
     async creatNewRoomGet() {
       await this.$http.get("NewRoom").then(res => {
@@ -91,7 +104,7 @@ export default {
         }
         this.roomForm = res.data;
         this.roomDialogVisible = true;
-         sessionStorage.setItem("token",res.data.token)
+        sessionStorage.setItem("token", res.data.token);
       });
     },
     async creatNewRoomPost() {
