@@ -5,7 +5,7 @@
         <el-col :span="1.5">
           <span>参与者：</span>
         </el-col>
-        <el-col :span="21.5">
+        <el-col :span="18.5">
           <el-tag
             :key="tag.payerId"
             v-for="tag in Bill.payerInfo"
@@ -23,6 +23,10 @@
             @blur="CreatPayer"
           ></el-input>
           <el-button v-else class="button-new-tag" size="small" @click="showInput">+ 添加参与者</el-button>
+        </el-col>
+        <el-col class="room-title" :span="4">
+          <span>{{Bill.roomTitle}}</span>
+          <el-button type="primary" icon="el-icon-edit" size="mini" circle @click="billTitleVisible = true"></el-button>
         </el-col>
       </el-row>
       <el-row>
@@ -138,6 +142,16 @@
         <el-button type="primary" @click="calBillVisible = false">确 定</el-button>
       </span>
     </el-dialog>
+
+    <el-dialog title="编辑账单名称" :visible.sync="billTitleVisible" width="30%">
+      <el-row>
+        <el-input v-model="Bill.roomTitle">{{Bill.roomTitle}}</el-input>
+      </el-row>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="billTitleVisible = false">取 消</el-button>
+        <el-button type="primary" @click="EditBillTitle">确 定</el-button>
+      </span>
+    </el-dialog>
   </div>
 </template>
 
@@ -150,6 +164,7 @@ export default {
       billInfoDialogVisible: false,
       editBillInfoVisible: false,
       calBillVisible: false,
+      billTitleVisible: false,
       billInfoForm: {
         payerId: null,
         payNum: null,
@@ -180,6 +195,19 @@ export default {
     this.GetBill();
   },
   methods: {
+    async EditBillTitle(){
+      let url =
+        this.$route.params.roomId +
+        "?roomTitle=" +
+        this.Bill.roomTitle;
+      await this.$http.patch(url).then(res => {
+        if (res.status != 200) {
+          return this.$message.error("修改账单名称失败，请重试！");
+        }
+      });
+        this.GetBill();
+        this.billTitleVisible = false;
+    },
     CleanBillInfoForm() {
       this.billInfoForm = {
         payerId: null,
@@ -264,8 +292,9 @@ export default {
           if (calBillObj[i].recpay - calBillObj[i].collect === 0) {
             continue;
           }
-          calBillObj[i + 1].recpay +=
-             Number((calBillObj[i].recpay - calBillObj[i].collect).toFixed(2));
+          calBillObj[i + 1].recpay += Number(
+            (calBillObj[i].recpay - calBillObj[i].collect).toFixed(2)
+          );
           log = `${calBillObj[i].payerName} 给 ${
             calBillObj[i + 1].payerName
           } ${(calBillObj[i].recpay - calBillObj[i].collect).toFixed(2)}元`;
@@ -467,6 +496,7 @@ export default {
           return this.$message.error("获取账单失败，请重试！");
         }
         this.Bill = res.data;
+        console.log(this.Bill);
       });
       this.GetBillInfo();
     },
@@ -528,5 +558,17 @@ export default {
 }
 .clsBtn {
   margin-top: 15px;
+}
+.room-title {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  color: #409eff;
+  font-size: 30px;
+  margin-left: auto;
+  > button {
+    margin-left: 10px;
+  }
 }
 </style>
