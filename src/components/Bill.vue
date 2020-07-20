@@ -495,7 +495,7 @@ export default {
         if (res.status != 200) {
           return this.$message.error("获取账单失败，请重试！");
         }
-        this.Bill = res.data;
+        this.Bill = res.data.data;
         console.log(this.Bill);
       });
       this.GetBillInfo();

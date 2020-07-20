@@ -91,7 +91,7 @@ export default {
             if (res.status != 200) {
               return this.$message.error("进入房间失败，请重试！");
             }
-            sessionStorage.setItem("token", res.data.token);
+            sessionStorage.setItem("token", res.data.data.token);
             this.$router.push("/Bill/" + this.inRoomForm.roomId);
           });
       });
@@ -102,9 +102,9 @@ export default {
         if (res.status != 200) {
           return this.$message.error("创建失败，请重试！");
         }
-        this.roomForm = res.data;
+        this.roomForm = res.data.data;
         this.roomDialogVisible = true;
-        sessionStorage.setItem("token", res.data.token);
+        sessionStorage.setItem("token", res.data.data.token);
       });
     },
     async creatNewRoomPost() {
@@ -115,7 +115,7 @@ export default {
           if (res.status != 200) {
             return this.$message.error("创建失败，请重试！");
           }
-          //sessionStorage.setItem("token",res.data.data.token)
+          //sessionStorage.setItem("token",res.data.data.data.token)
           this.$router.push("/Bill/" + this.roomForm.roomId);
         });
       });
